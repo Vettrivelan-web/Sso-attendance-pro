@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Yoga Attendance - Monthly Staff Management</title>
+  <style>
+    :root {
+        --bg-color: #1a1d23;
+        --card-bg: #21252b;
+        --day: #98c379;
+        --night: #61afef;
+        --cf: #d19a66;
+        --dn: #56b6c2;
+        --off: #e06c75;
+        --leave: #e5c07b;
+        --purple: #c678dd;
+    }
+
+    * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { background-color: var(--bg-color); color: white; margin: 0; padding: 10px; overflow-x: auto; }
+
+    #captureArea { width: 100%; min-width: 1200px; padding: 10px; }
+
+    .main-header { text-align: center; background: #282c34; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
+    .main-header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+    .main-header h2 { margin: 5px 0 0; font-size: 16px; color: #abb2bf; font-weight: normal; }
+
+    .top-bar { display: flex; gap: 10px; background: #282c34; padding: 12px; border-radius: 8px; margin-bottom: 15px; align-items: center; border: 1px solid #333; }
+    .top-bar select, .top-bar button { background: #3e4451; color: white; border: 1px solid #555; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .btn-save { background: var(--night) !important; color: #1a1d23 !important; font-weight: bold; }
+    .btn-download { background: var(--day) !important; color: #1a1d23 !important; font-weight: bold; }
+
+    .table-container { background: #282c34; padding: 5px; border-radius: 8px; border: 1px solid #333; width: 100%; }
+    table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    th, td { border: 1px solid #333; padding: 6px 2px; text-align: center; font-size: 11px; }
+
+    th { background: #2c313a; color: #fff; height: 50px; }
+    .date-num { font-size: 14px; font-weight: bold; }
+    .day-name { font-size: 9px; text-transform: uppercase; color: #7f848e; }
+
+    .name-column { width: 150px; background: #21252b !important; position: sticky; left: 0; z-index: 10; border-right: 2px solid #111; }
+    .name-box { 
+        background: #2c313a; border: 1px solid #444; border-radius: 4px; padding: 5px; width: 100%; 
+        color: #ffffff; font-weight: bold; outline: none; text-align: left; font-size: 12px;
+    }
+
+    .shift-cell { cursor: pointer; font-weight: bold; transition: 0.1s; color: white; }
+    .Day { background-color: var(--day) !important; color: #1a1d23; }
+    .Night { background-color: var(--night) !important; }
+    .CF { background-color: var(--cf) !important; }
+    .DN { background-color: var(--dn) !important; }
+    .Off { background-color: var(--off) !important; }
+    .Leave { background-color: var(--leave) !important; color: #1a1d23; }
+
+    .omv-divider { background: #3e4451; color: #fff; font-weight: bold; text-align: center; padding: 10px; font-size: 13px; letter-spacing: 5px; }
+
+    .count-row { background: #1c2025; font-weight: bold; color: #abb2bf; }
+    .summary-section { margin-top: 20px; background: #282c34; padding: 20px; border-radius: 8px; border: 1px solid #333; }
+    .summary-table { width: 100%; border-collapse: collapse; }
+    .summary-table th { background: #21252b; color: var(--night); }
+    .summary-table td { border: 1px solid #444; padding: 8px; text-align: center; }
+
+    .sig-container { display: flex; justify-content: space-around; margin-top: 50px; padding-bottom: 20px; }
+    .sig-box { border-top: 1px solid #555; width: 200px; text-align: center; padding-top: 10px; font-size: 12px; color: #abb2bf; }
+
+    .capture-mode .no-print { display: none !important; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<div id="loginScreen" style="text-align:center; padding:100px;" class="no-print">
+    <h1>Hostel Attendance Login</h1>
+    <input type="password" id="pass" placeholder="Password" style="padding:10px; width: 220px; background:#282c34; color:white; border:1px solid #555;">
+    <button onclick="checkPass()" style="padding:10px 20px; cursor: pointer; background:var(--night); border:none; border-radius:4px;">Login</button>
+</div>
+
+<div id="mainContent" style="display:none;">
+    <div id="captureArea">
+        <div class="main-header">
+            <h1>Boys Hostel Yoga Management Attendance Sheet</h1>
+            <h2 id="titleRange">Shift Scheduler</h2>
+        </div>
+
+        <div class="top-bar no-print">
+            <select id="month"></select>
+            <select id="year"></select>
+            <button onclick="updateView()">Update View</button>
+            <button class="btn-save" onclick="save()">Save Data</button>
+            <button class="btn-download" onclick="download()">Download Image</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead><tr id="headRow"></tr></thead>
+                <tbody id="staffBody"></tbody>
+                <tbody><tr><td colspan="32" class="omv-divider">O M V  H O S T E L</td></tr></tbody>
+                <tbody id="omvBody"></tbody>
+                <tbody id="countBody"></tbody>
+            </table>
+        </div>
+
+        <div class="summary-section">
+            <h3 style="text-align:center; color:var(--night)">Staff Attendance Summary</h3>
+            <table class="summary-table">
+                <thead>
+                    <tr><th>Name</th><th>Day</th><th>Night</th><th>C/F</th><th>D/N</th><th>Off</th><th>Leave</th></tr>
+                </thead>
+                <tbody id="summaryBody"></tbody>
+            </table>
+            
+            <div class="sig-container">
+                <div class="sig-box">Prepared by</div>
+                <div class="sig-box">Manager</div>
+                <div class="sig-box">Managing Director</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SHIFTS = ["Day", "Night", "C/F", "D/N", "Off", "Leave"];
+    
+    // Default names for a new month
+    const defaultStaff = ["Saravanan", "Madan", "Vettri", "Manikandan", "Antony", "Mohan", "Ganesan"];
+    const defaultOmv = ["Vijay", "Irudhvarai"];
+
+    let data = {
+        viewMonth: 0,
+        viewYear: 2026,
+        monthlyData: {} // This will store staff names and shifts per month
+    };
+
+    function checkPass() {
+        if(document.getElementById('pass').value === "vettri123") {
+            document.getElementById('loginScreen').style.display='none';
+            document.getElementById('mainContent').style.display='block';
+            init();
+        } else { alert("Wrong Password!"); }
+    }
+
+    function init() {
+        const saved = localStorage.getItem('yoga_attendance_v2');
+        if(saved) data = JSON.parse(saved);
+        
+        const mSel = document.getElementById('month');
+        const ySel = document.getElementById('year');
+        const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        
+        mSel.innerHTML = months.map((m,i) => `<option value="${i}" ${i==data.viewMonth?'selected':''}>${m}</option>`).join('');
+        ySel.innerHTML = [2025, 2026, 2027].map(y => `<option value="${y}" ${y==data.viewYear?'selected':''}>${y}</option>`).join('');
+        
+        render();
+    }
+
+    function getMonthKey() { return `${data.viewYear}_${data.viewMonth}`; }
+
+    function ensureMonthExists(mKey) {
+        if (!data.monthlyData[mKey]) {
+            // Create a fresh copy for this month
+            data.monthlyData[mKey] = {
+                staff: defaultStaff.map(name => ({ name: name, shifts: {} })),
+                omv: defaultOmv.map(name => ({ name: name, shifts: {} }))
+            };
+        }
+    }
+
+    function render() {
+        const mKey = getMonthKey();
+        ensureMonthExists(mKey);
+
+        const base = new Date(data.viewYear, data.viewMonth, 21);
+        const nextMonth = (data.viewMonth + 1) % 12;
+        const nextYear = data.viewMonth === 11 ? data.viewYear + 1 : data.viewYear;
+        const end = new Date(nextYear, nextMonth, 20);
+        
+        const diff = Math.round((end - base)/86400000) + 1;
+
+        document.getElementById('titleRange').textContent = `Shift Scheduler (21 ${base.toLocaleString('default',{month:'short'})} to 20 ${end.toLocaleString('default',{month:'short'})} ${end.getFullYear()})`;
+
+        const hr = document.getElementById('headRow');
+        hr.innerHTML = '<th class="name-column">NAME</th>';
+        for(let i=0; i<diff; i++) {
+            let d = new Date(base); d.setDate(base.getDate()+i);
+            hr.innerHTML += `<th><div class="date-num">${d.getDate()}</div><div class="day-name">${d.toLocaleString('default',{weekday:'short'})}</div></th>`;
+        }
+
+        const currentMonthData = data.monthlyData[mKey];
+        renderBody('staffBody', currentMonthData.staff, diff);
+        renderBody('omvBody', currentMonthData.omv, diff);
+        renderCounts(diff, currentMonthData);
+        renderSummary(diff, currentMonthData);
+    }
+
+    function renderBody(id, list, diff) {
+        const b = document.getElementById(id); b.innerHTML = '';
+        list.forEach((p, pIdx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="name-column"><input class="name-box" value="${p.name}" onchange="updateName('${id}', ${pIdx}, this.value)"></td>`;
+            for(let i=0; i<diff; i++) {
+                const s = p.shifts[i] || "Day";
+                const td = document.createElement('td');
+                td.className = `shift-cell ${s.replace('/','').replace(' ','')}`;
+                td.textContent = s;
+                td.onclick = () => {
+                    p.shifts[i] = SHIFTS[(SHIFTS.indexOf(s)+1)%SHIFTS.length];
+                    render();
+                };
+                tr.appendChild(td);
+            }
+            b.appendChild(tr);
+        });
+    }
+
+    function renderCounts(diff, monthData) {
+        const b = document.getElementById('countBody'); b.innerHTML = '';
+        const labels = ["Day", "Night", "C/F", "D/N", "Off"];
+        labels.forEach(label => {
+            const tr = document.createElement('tr');
+            tr.className = 'count-row';
+            tr.innerHTML = `<td class="name-column" style="text-align:left; padding-left:10px;">${label} Count</td>`;
+            for(let i=0; i<diff; i++) {
+                let count = 0;
+                [...monthData.staff, ...monthData.omv].forEach(p => { 
+                    if((p.shifts[i] || "Day") === label) count++; 
+                });
+                tr.innerHTML += `<td>${count}</td>`;
+            }
+            b.appendChild(tr);
+        });
+    }
+
+    function renderSummary(diff, monthData) {
+        const b = document.getElementById('summaryBody'); b.innerHTML = '';
+        [...monthData.staff, ...monthData.omv].forEach(p => {
+            let c = { Day:0, Night:0, "C/F":0, "D/N":0, Off:0, Leave:0 };
+            for(let i=0; i<diff; i++) { 
+                let s = p.shifts[i] || "Day";
+                if(c.hasOwnProperty(s)) c[s]++; 
+            }
+            b.innerHTML += `<tr><td style="text-align:left; font-weight:bold;">${p.name}</td><td>${c.Day}</td><td>${c.Night}</td><td>${c["C/F"]}</td><td>${c["D/N"]}</td><td>${c.Off}</td><td>${c.Leave}</td></tr>`;
+        });
+    }
+
+    function updateView() {
+        data.viewMonth = parseInt(document.getElementById('month').value);
+        data.viewYear = parseInt(document.getElementById('year').value);
+        render();
+    }
+
+    function updateName(id, idx, val) {
+        const mKey = getMonthKey();
+        if(id === 'staffBody') data.monthlyData[mKey].staff[idx].name = val;
+        else data.monthlyData[mKey].omv[idx].name = val;
+    }
+
+    function save() {
+        localStorage.setItem('yoga_attendance_v2', JSON.stringify(data));
+        alert("Data saved for the selected month!");
+    }
+
+    function download() {
+        const captureArea = document.getElementById('captureArea');
+        captureArea.classList.add('capture-mode');
+        setTimeout(() => {
+            html2canvas(captureArea, { backgroundColor: "#1a1d23", scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Attendance_${getMonthKey()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                captureArea.classList.remove('capture-mode');
+            });
+        }, 300);
+    }
+</script>
+</body>
+</html>
